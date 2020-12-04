@@ -3,14 +3,16 @@
 
 import setuptools
 
+from tlru_cache import __version__ as version
+
 with open('README.md') as readme:
     long_description = readme.read()
 
 setuptools.setup(name='tlru-cache',
-                 version='0.1.0a1',
+                 version=version,
                  author='Leonhard S.',
                  author_email='leonhard-sei@outlook.com',
-                 description='A time-aware version of functools.lru_cache.',
+                 description='A time aware version of functools.lru_cache.',
                  long_description=long_description,
                  long_description_content_type='text/markdown',
                  keywords='cache lru tlru lifetime',
