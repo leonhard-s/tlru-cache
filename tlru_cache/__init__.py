@@ -182,17 +182,15 @@ def _tlru_cache_wrapper(user_function: Callable[..., _T],
         def wrapper(*args: Any, **kwargs: Any) -> _T:
             """Simple caching with no size or time constraint."""
             nonlocal hits, misses
-
-            key = _make_key(args, kwargs, typed)
-
-            result, _ = cache_get(key, default)
-            if result is not sentinel:
-                hits += 1
-                return result  # type: ignore
-
-            misses += 1
-            result = user_function(*args, **kwargs)
-            cache[key] = result, 0.0  # Time data not needed/used
+            with lock:
+                key = _make_key(args, kwargs, typed)
+                result, _ = cache_get(key, default)
+                if result is not sentinel:
+                    hits += 1
+                    return result  # type: ignore
+                misses += 1
+                result = user_function(*args, **kwargs)
+                cache[key] = result, 0.0  # Time data not needed/used
             return result
 
     elif lifetime is None or lifetime < 0:
@@ -201,21 +199,21 @@ def _tlru_cache_wrapper(user_function: Callable[..., _T],
             """Basic LRU cache."""
             nonlocal hits, misses
             key = _make_key(args, kwargs, typed)
+            with lock:
+                result, _ = cache_get(key, default)
+                if result is not sentinel:
 
-            result, _ = cache_get(key, default)
-            if result is not sentinel:
+                    hits += 1
+                    cache_move(key, last=True)
+                    return result  # type: ignore
 
-                hits += 1
-                cache_move(key, last=True)
-                return result  # type: ignore
+                if maxsize is not None and cache_len() >= maxsize:
+                    _ = cache.popitem(last=False)
 
-            if maxsize is not None and cache_len() >= maxsize:
-                _ = cache.popitem(last=False)
+                misses += 1
 
-            misses += 1
-
-            result = user_function(*args, **kwargs)
-            cache[key] = result, 0.0  # Time data not needed/used
+                result = user_function(*args, **kwargs)
+                cache[key] = result, 0.0  # Time data not needed/used
             return result
 
     else:
@@ -223,28 +221,27 @@ def _tlru_cache_wrapper(user_function: Callable[..., _T],
         def wrapper(*args: Any, **kwargs: Any) -> _T:
             """Timed LRU cache.."""
             nonlocal hits, misses, expired
-
             key = _make_key(args, kwargs, typed)
-            result, time_added = cache_get(key, default)
+            with lock:
+                result, time_added = cache_get(key, default)
+                now = t_now()
+                if result is not sentinel:
 
-            now = t_now()
-            if result is not sentinel:
+                    if now - time_added <= lifetime:  # type: ignore
+                        hits += 1
+                        cache_move(key, last=True)
+                        return result  # type: ignore
 
-                if now - time_added <= lifetime:  # type: ignore
-                    hits += 1
-                    cache_move(key, last=True)
-                    return result  # type: ignore
+                    # Result is out of date - update
+                    _ = cache.pop(key)
+                    expired += 1
+                elif maxsize is not None and cache_len() >= maxsize:
+                    _ = cache.popitem(last=False)
 
-                # Result is out of date - update
-                _ = cache.pop(key)
-                expired += 1
-            elif maxsize is not None and cache_len() >= maxsize:
-                _ = cache.popitem(last=False)
+                misses += 1
 
-            misses += 1
-
-            result = user_function(*args, **kwargs)
-            cache[key] = result, now  # Time data not needed/used
+                result = user_function(*args, **kwargs)
+                cache[key] = result, now  # Time data not needed/used
             return result
 
     def cache_info() -> _TLRUCacheInfo:
