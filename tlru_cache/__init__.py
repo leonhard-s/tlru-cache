@@ -1,3 +1,12 @@
+"""Time aware cache for arbitrary functions.
+
+This module implements the ``tlru_cache` function, which is a decorator
+very similar to :func:`functools.lru_cache()`. It extends the caching
+strategy to also allow for a time constraint, which is used to ensure
+cache items are always reasonably recent.
+
+"""
+
 import collections
 import functools
 import threading
