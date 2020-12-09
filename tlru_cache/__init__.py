@@ -19,7 +19,7 @@ __all__ = [
     'tlru_cache'
 ]
 
-__version__ = '0.1.0a1'
+__version__ = '0.1.0a2'
 
 _T = TypeVar('_T')
 _FuncT = TypeVar('_FuncT', bound=Callable[..., Any])
