@@ -1,0 +1,27 @@
+# This workflow will run any files matching "tests/*_test.py" using the Python
+# unittest module.
+# The module is invoked by the coverage module, which generates a test coverage
+# report called ".coveragerc", which is sent to coveralls.io as the final step.
+
+name: Run Python unit tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: "3.8"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+      - name: Run tests
+        env:
+          SERVICE_ID: ${{secrets.REPO_SERVICE_ID}}
+        run: |
+          python -m unittest discover -p *_test.py tests/
